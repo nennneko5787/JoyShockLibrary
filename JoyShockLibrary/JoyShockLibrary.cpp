@@ -825,3 +825,15 @@ void JslSetPlayerNumber(int deviceId, int number)
                 jc->player_number);
 	}
 }
+// NSコントローラーのHD振動サポート...?
+void JslNSControllerRumble(int deviceId)
+{
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr && jc->controller_type == ControllerType::n_switch) {
+		int neko[] = {0x00,0x01,0x40,0x40,0x00,0x01,0x40,0x40};
+		unsigned char buf[64];
+		memset(buf, 0x00, 0x40);
+		buf[0] = (unsigned char)neko;
+		jc->send_command(0x10, buf, 1);
+	}
+}

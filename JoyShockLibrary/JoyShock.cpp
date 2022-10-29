@@ -9,6 +9,7 @@
 #include <atomic>
 #include "tools.cpp"
 #include <cstring>
+#include "GamepadMotion.hpp"
 
 #ifdef __GNUC__
 #define _wcsdup wcsdup

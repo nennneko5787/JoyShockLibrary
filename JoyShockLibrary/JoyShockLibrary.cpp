@@ -825,15 +825,56 @@ void JslSetPlayerNumber(int deviceId, int number)
                 jc->player_number);
 	}
 }
-// NSコントローラーのHD振動サポート...?
-void JslNSControllerRumble(int deviceId)
+// Nintendo Switch コントローラーの振動機能
+void JslSetNSConRumbleMode(int deviceId, int number)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr && jc->controller_type == ControllerType::n_switch) {
-		int neko[] = {0x00,0x01,0x40,0x40,0x00,0x01,0x40,0x40};
 		unsigned char buf[64];
 		memset(buf, 0x00, 0x40);
-		buf[0] = (unsigned char)neko;
-		jc->send_command(0x10, buf, 1);
+		buf[0] = (unsigned char)number;
+		jc->send_subcommand(0x01, 0x48, buf, 1);
+	}
+}
+void JslNSConRumble(int deviceId, float freq, float amp)
+{
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr && jc->controller_type == ControllerType::n_switch) {
+
+		//Float frequency to hex conversion
+		if (freq < 0.0f)
+		freq = 0.0f;
+		else if (freq > 1252.0f)
+		freq = 1252.0f;
+		uint8_t encoded_hex_freq = (uint8_t)round(log2((double)freq/10.0)*32.0);
+
+		//Convert to Joy-Con HF range. Range in big-endian: 0x0004-0x01FC with +0x0004 steps.
+		uint16_t hf = (encoded_hex_freq-0x60)*4;
+		//Convert to Joy-Con LF range. Range: 0x01-0x7F.
+		uint8_t lf = encoded_hex_freq-0x40;
+
+		// Float amplitude to hex conversion
+		uint8_t encoded_hex_amp = 0;
+		if(amp > 0.23f)
+		encoded_hex_amp = (uint8_t)round(log2f(amp*8.7f)*32.f);
+		else if(amp > 0.12f)
+		encoded_hex_amp = (uint8_t)round(log2f(amp*17.f)*16.f);
+		else{
+		// TBD
+		}
+		uint16_t hf_amp = encoded_hex_amp * 2;    // encoded_hex_amp<<1;
+		uint8_t lf_amp = encoded_hex_amp / 2 + 64;// (encoded_hex_amp>>1)+0x40;
+
+		unsigned char byte[64];
+		memset(byte, 0x00, 0x40);
+		//Byte swapping
+		byte[0] = hf & 0xFF;
+		byte[1] = hf_amp + ((hf >> 8) & 0xFF); //Add amp + 1st byte of frequency to amplitude byte
+
+		//Byte swapping
+		byte[2] = lf + ((lf_amp >> 8) & 0xFF); //Add freq + 1st byte of LF amplitude to the frequency byte
+		byte[3] = lf_amp & 0xFF;
+
+		jc->send_command(0x10, byte, 1);
 	}
 }
